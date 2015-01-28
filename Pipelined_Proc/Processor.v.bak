@@ -1,0 +1,39 @@
+module Processor(clk, reset,
+
+	Register #(.BIT_WIDTH(DBITS), .RESET_VALUE(START_PC)) pc (clk, reset, pcWrtEn, pcIn, pcOut);
+	PcLogic pcLogic (pcOut, pcLogicOut);
+	
+	Mux4to1 muxPcOut (pcSel, pcLogicOut, branchPc, aluOut, 32'd0, pcIn);
+
+	
+	// Instruction Memory
+	InstMemory #(IMEM_INIT_FILE, IMEM_ADDR_BIT_WIDTH, IMEM_DATA_BIT_WIDTH) instMem (pcOut[IMEM_PC_BITS_HI - 1: IMEM_PC_BITS_LO], instWordIn);
+  
+	//Pipeline Staller
+	
+	Staller pipelinestall (pipeisStalled,instWordIn, isStalled, pcWrtEn, instWordOut); 
+	
+	// Controller
+	Controller cont (.inst(instWordOut), .aluCmpIn(cmpOut_top), .sndOpcode(sndOpcode), .dRegAddr(wrtIndex), .s1RegAddr(rdIndex1), .s2RegAddr(rdIndex2), .imm(imm), 
+							.regFileWrtEn(regFileEn), .immSel(immSel), .memOutSel(memOutSel), .pcSel(pcSel), .isLoad(isLoad), .isStore(isStore));
+  
+	// RegisterFile
+	RegisterFile regFile (.clk(clk), .wrtEn(piperegFileEn), .wrtIndex(pipewrtIndex), .rdIndex1(rdIndex1), .rdIndex2(rdIndex2), .dataIn(dataIn), .dataOut1(dataOut1), .dataOut2(dataOut2));
+ 
+	// ALU
+	Alu alu1 (.ctrl(sndOpcode), .rawDataIn1(dataOut1), .rawDataIn2(aluIn2), .dataOut(aluOut), .cmpOut(cmpOut_top)); 
+  
+   // Sign Extension
+	SignExtension #(.IN_BIT_WIDTH(16), .OUT_BIT_WIDTH(32)) se (imm, seImm);
+ 
+	// ALU Mux
+	Mux2to1 #(.DATA_BIT_WIDTH(DBITS)) muxAluIn (immSel, dataOut2, seImm, aluIn2);
+
+	//Pipeline Register
+	PipelineRegister #(.DATA_BIT_WIDTH(DMEM_DATA_BIT_WIDTH)) stage2pipe (.clk(clk), .reset(reset), .wrtEn(pipeRegWrtEn), .dataOut2In(dataOut2), .aluOutIn(aluOut), .pcLogicOutIn(pcLogicOut), .wrtIndexIn(wrtIndex), .memOutSelIn(memOutSel), .regFileEnIn(regFileEn), .isLoadIn(isLoad), .isStoreIn(isStore), .isStalledIn(isStalled),
+																								.dataOut2Out(pipedataOut2), .aluOutOut(pipealuOut), .pcLogicOutOut(pipepcLogicOut), .wrtIndexOut(pipewrtIndex), .memOutSelOut(pipememOutSel), .regFileEnOut(piperegFileEn), .isLoadOut(pipeisLoad), .isStoreOut(pipeisStore), .isStalledOut(pipeisStalled));
+	
+	Mux4to1 muxMemOut (pipememOutSel, pipealuOut, dataMemoryOut, pipepcLogicOut, 32'd0, dataIn);
+	
+	// Branch Address Calculator
+	BranchAddrCalculator bac (.nextPc(pcLogicOut), .pcRel(seImm), .branchAddr(branchPc));

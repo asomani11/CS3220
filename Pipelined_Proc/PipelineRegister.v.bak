@@ -1,0 +1,3 @@
+module PipelineRegister (clk, reset, wrtEn, memOutSelIn, isLoadIn, isStoreIn, isLoadOut, isStoreOut, memOutSelOut);
+
+endmodule

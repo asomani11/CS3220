@@ -1,0 +1,31 @@
+module IO_HEX(clk, reset, wrtEn, addrbus, HEX0, HEX1, HEX2, HEX3, databus);
+	parameter DATA_BIT_WIDTH = 32;
+	parameter RESET_VALUE = 0;
+	
+	input clk,reset,wrtEn;
+	input [DATA_BIT_WIDTH - 1: 0] addrbus;
+	output [3:0] HEX0;
+	output [3:0] HEX1;
+	output [3:0] HEX2;
+	output [3:0] HEX3;
+	inout [DATA_BIT_WIDTH - 1: 0] databus;
+	reg [DATA_BIT_WIDTH - 1: 0] databus;
+	reg[DATA_BIT_WIDTH - 1: 0] data;
+	
+	always @(posedge clk) begin
+		if (reset == 1'b1)
+			data <= RESET_VALUE;
+		else if(addrbus == 32'hF0000004) begin
+			if(wrtEn)
+				data <= databus & 32'h0000FFFF;
+			else
+				databus <= data & 32'h0000FFFF;
+		end
+	end
+	
+	dec2_7seg hex0Converter(data[3:0], HEX0);
+	dec2_7seg hex1Converter(data[7:4], HEX1);
+	dec2_7seg hex2Converter(data[11:8], HEX2);
+	dec2_7seg hex3Converter(data[15:12], HEX3);
+	
+endmodule

@@ -1,0 +1,6 @@
+module IO_LEDG(clk, reset, wrtEn, addrbus, databus);
+
+negRegister ledgReg 	 (clk, reset, ledgEn, dataIn, ledgOut); 
+	assign LEDG = ledgOut[7:0];
+	
+endmodule

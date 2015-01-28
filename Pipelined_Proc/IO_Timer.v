@@ -1,0 +1,68 @@
+module IO_TIMER(CLK, RESET, WE, ABUS, DBUS);
+
+	parameter DBITS = 32;
+	parameter ADDR1 = 32'hF0000020;
+	parameter ADDR2 = 32'hF0000024;
+	parameter ADDR3 = 32'hF0000120;
+	parameter DELAY = 50000;
+	parameter INIT_VALUE = 0; 
+
+	input CLK, WE, RESET;
+	inout [DBITS - 1: 0] DBUS;
+	input [DBITS - 1: 0] ABUS; 
+		
+	// Determines if address matches one of devices
+	wire tcnt_e = (ADDR1 == ABUS);
+	wire tlim_e = (ADDR2 == ABUS);
+	wire tctl_e = (ADDR3 == ABUS);
+	
+	// Determines whether read or write instruction
+	wire rdCtl_tCnt = ( !WE && tcnt_e );
+	wire wrCtl_tCnt = (  WE && tcnt_e );
+	
+	wire rdCtl_tLim = ( !WE && tlim_e );
+	wire wrCtl_tLim = (  WE && tlim_e );
+	
+	wire rdCtl_tCtl = ( !WE && tctl_e );
+	wire wrCtl_tCtl = (  WE && tctl_e ); 
+	
+	assign DBUS = rdCtl_tCnt ? tcnt_val 
+				: rdCtl_tLim ? tlim_val 
+				: rdCtl_tCtl ? tctl_val 
+				: {DBITS{1'bz}};
+	
+	
+	// Registers to hold counter value, limit value, control value
+	reg [DBITS - 1:0] tcnt_val = 0, tlim_val = 0, tctl_val = 0;	
+	reg [DBITS - 1:0] count = 0; 
+	
+	// Incrementing the counter.
+	always @ (posedge CLK) begin
+		if (RESET) begin
+			count <= 0;
+			tlim_val <= 0;
+			tctl_val <= 0; 
+			tcnt_val <= INIT_VALUE;   
+		end
+		else begin
+		
+			tcnt_val <= wrCtl_tCnt ? DBUS : tcnt_val;
+			tlim_val <= wrCtl_tLim ? DBUS : tlim_val;
+			tctl_val <= wrCtl_tCtl ? DBUS : tctl_val;
+			
+			if (count >= DELAY) begin
+				count <= 0; 
+				if ( (tlim_val > 0) && ( (tlim_val - 1) <=  tcnt_val) ) begin
+					tcnt_val <= 0;	
+				end
+				else begin
+					tcnt_val <= tcnt_val + 1;
+				end
+			end
+			else begin
+				count <= count + 1; 
+			end
+		end
+	end
+	
+endmodule

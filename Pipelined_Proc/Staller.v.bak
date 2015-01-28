@@ -1,0 +1,23 @@
+module Staller (clk, pcWrtEn, instWordIn, instWordOut)
+	parameter OP1_BCOND					 = 4'b0110;
+	parameter OP1_SW   					 = 4'b0101;
+	parameter OP1_LW   					 = 4'b1001;
+	parameter OP1_JAL  					 = 4'b1011;
+	parameter NUM_BUBBLES = 1;
+	
+	reg counter = 0;
+	
+	always @(posedge clk) begin
+		if((instWordIn == OP1_BCOND | instWordIn == OP1_SW | instWordIn == OP1_LW | instWordIn == OP1_JAL)&(counter < NUM_BUBBLES)) begin
+			pcWrtEn <= 1'b0;
+			counter <= counter + 1;
+			if (counter == NUM_BUBBLES) begin
+				pcWrtEn <= 1'b1;
+				counter <= 1'b0;
+			end
+		end	
+		else
+			pcWrtEn <= 1'b1;
+	end
+endmodule
+

@@ -1,0 +1,42 @@
+module IO_SW(clk, reset, wrtEn, addrbus, SW, databus);
+	parameter DATA_BIT_WIDTH = 32;
+	parameter RESET_VALUE = 0;
+	
+	input clk,reset,wrtEn;
+	input [DATA_BIT_WIDTH - 1: 0] addrbus;
+	input [9:0] SW;
+	inout [DATA_BIT_WIDTH - 1: 0] databus;
+	reg [DATA_BIT_WIDTH - 1: 0] databus;
+	reg[DATA_BIT_WIDTH - 1: 0] data_sdata;
+	reg[DATA_BIT_WIDTH - 1: 0] data_sctrl;
+	
+	always @(posedge clk) begin
+		if(data_sdata != {22'd0,KEY}) begin
+			data_sdata <= {22'd0,KEY};
+			if(data_sctrl[0] == 1'b1) begin
+				data_sctrl <= data_sctrl | 32'h00000004; //Writing the overrun bit
+			end
+			data_sctrl <= data_sctrl | 32'h00000001; //Writing the ready bit
+		end
+		if (reset == 1'b1) begin
+			data_sctrl <= RESET_VALUE;
+		end
+		else if(addrbus == 32'hF0000010) begin
+			if(wrtEn)
+				databus <= 32'hZZZZZZZZ;
+			else begin
+				databus <= data_sdata;
+				data_sctrl <= data_sctrl & 32'hFFFFFFFE; //Clearing the ready bit
+			end
+		end
+		else if(addrbus == 32'hF0000110) begin
+			if(wrtEn) begin
+				databus <= 32'hZZZZZZZZ;
+				data_sctrl <= (databus[2] == 1'b0)?(data_sctrl & 32'hFFFFFFFB):data_sctrl;
+			end
+			else
+				databus <= data_sctrl;
+		end
+	end
+	
+endmodule
